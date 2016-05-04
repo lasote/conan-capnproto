@@ -25,7 +25,8 @@ class CapNProtoConan(ConanFile):
                 pass
         
     def source(self):
-        zip_name = "capnproto-c++-%s.tar.gz" % self.version
+        zip_name = "capnproto-c++-%s.tar.gz" % self.version if self.settings.os != "Windows" \
+                    else "capnproto-c++-win32-%s.zip" % self.version
         download("https://capnproto.org/%s" % zip_name, zip_name)
         unzip(zip_name)
         os.unlink(zip_name)
@@ -49,12 +50,10 @@ class CapNProtoConan(ConanFile):
 
         else:
             cmake = CMake(self.settings)
-            if self.settings.os == "Windows":
-                self.run("IF not exist _build mkdir _build")
-            else:
-                self.run("mkdir _build")
-            cd_build = "cd _build"
-            cmake_1 = '%s && cmake .. %s  -DCAPNP_LITE=1 -DEXTERNAL_CAPNP=1' % (cd_build, cmake.command_line)
+            os.mkdir(os.path.join(self.ZIP_FOLDER_NAME, "_build"))
+            cd_build = "cd %s/_build" % self.ZIP_FOLDER_NAME
+            lite = "-DCAPNP_LITE=1" if self.settings.compiler == "Visual Studio" else ""
+            cmake_1 = '%s && cmake .. %s %s -DEXTERNAL_CAPNP=0 -DBUILD_TESTING=0' % (cd_build, cmake.command_line, lite)
             self.output.warn(cmake_1)
             self.run(cmake_1)
             cmake_2 = "%s && cmake --build . %s" % (cd_build, cmake.build_config)
@@ -69,12 +68,14 @@ class CapNProtoConan(ConanFile):
         self.copy(pattern="*.h", dst="include/capnp", src="%s/src/capnp" % self.ZIP_FOLDER_NAME,  keep_path=True)
         self.copy(pattern="*.h", dst="include/kj", src="%s/src/kj" % self.ZIP_FOLDER_NAME,  keep_path=True)
 
-
+        self.copy(pattern="*.capnp", dst="src/capnp", src="%s/src/capnp" % self.ZIP_FOLDER_NAME,  keep_path=True)
+        
         # Copying static and dynamic libs
         if self.settings.os == "Windows":
             if self.options.shared:
-                self.copy(pattern="*.dll", dst="bin", src="_build", keep_path=False)
-            self.copy(pattern="*.lib", dst="lib", src="_build", keep_path=False)
+                self.copy(pattern="*.dll", dst="bin", src="%s/_build" % self.ZIP_FOLDER_NAME, keep_path=False)
+            self.copy(pattern="*.lib", dst="lib", src="%s/_build" % self.ZIP_FOLDER_NAME, keep_path=False)
+            self.copy(pattern="*.exe", dst="bin", keep_path=False)
         else:
             self.copy(pattern="*/capnp", dst="bin", keep_path=False)
             self.copy(pattern="*/capnpc-c++", dst="bin", keep_path=False)
@@ -93,4 +94,6 @@ class CapNProtoConan(ConanFile):
         self.cpp_info.libs = ['capnpc', 'capnp-rpc', 'capnp', 'kj-async', 'kj']
         if self.settings.os == "Linux":
             self.cpp_info.libs.append("pthread")
-
+        if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
+            self.cpp_info.libs = ['capnpc', 'kj']
+            self.cpp_info.defines.append("CAPNP_LITE=1")
