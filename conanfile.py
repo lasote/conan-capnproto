@@ -17,7 +17,6 @@ class CapNProtoConan(ConanFile):
     license="MIT https://github.com/sandstorm-io/capnproto/blob/v0.5.3/LICENSE"
 
     def config(self):
-        del self.settings.compiler.libcxx
         if self.settings.os == "Windows":
             try:
                 self.options.remove("fPIC")
