@@ -21,9 +21,9 @@ class CapNProtoConan(ConanFile):
         if self.settings.os == "Windows":
             try:
                 self.options.remove("fPIC")
-            except: 
+            except:
                 pass
-        
+
     def source(self):
         zip_name = "capnproto-c++-%s.tar.gz" % self.version if self.settings.os != "Windows" \
                     else "capnproto-c++-win32-%s.zip" % self.version
@@ -38,12 +38,12 @@ class CapNProtoConan(ConanFile):
                 env_line = env.command_line.replace('CFLAGS="', 'CFLAGS="-fPIC ')
             else:
                 env_line = env.command_line
-            
+
             if self.settings.os == "Macos":
                 old_str = '-install_name \$rpath/\$soname'
                 new_str = '-install_name \$soname'
                 replace_in_file("./%s/configure" % self.ZIP_FOLDER_NAME, old_str, new_str)
-            
+
             self.output.warn(env_line)
             self.run("cd %s && %s ./configure" % (self.ZIP_FOLDER_NAME, env_line))
             self.run("cd %s && %s make -j6 check" % (self.ZIP_FOLDER_NAME, env_line))
@@ -64,12 +64,12 @@ class CapNProtoConan(ConanFile):
         """ Define your conan structure: headers, libs, bins and data. After building your
             project, this method is called to create a defined structure:
         """
-      
+
         self.copy(pattern="*.h", dst="include/capnp", src="%s/src/capnp" % self.ZIP_FOLDER_NAME,  keep_path=True)
         self.copy(pattern="*.h", dst="include/kj", src="%s/src/kj" % self.ZIP_FOLDER_NAME,  keep_path=True)
 
         self.copy(pattern="*.capnp", dst="src/capnp", src="%s/src/capnp" % self.ZIP_FOLDER_NAME,  keep_path=True)
-        
+
         # Copying static and dynamic libs
         if self.settings.os == "Windows":
             if self.options.shared:
@@ -80,7 +80,7 @@ class CapNProtoConan(ConanFile):
             self.copy(pattern="*/capnp", dst="bin", keep_path=False)
             self.copy(pattern="*/capnpc-c++", dst="bin", keep_path=False)
             self.copy(pattern="*/capnpc-capnp", dst="bin", keep_path=False)
-            
+
             if self.options.shared:
                 if self.settings.os == "Macos":
                     self.copy(pattern="*.dylib", dst="lib", keep_path=False)
@@ -91,6 +91,7 @@ class CapNProtoConan(ConanFile):
                 self.copy(pattern="*.a", dst="lib", src=self.ZIP_FOLDER_NAME, keep_path=False)
 
     def package_info(self):
+        self.env_info.path.append(os.path.join(self.package_folder, 'bin'))
         self.cpp_info.libs = ['capnpc', 'capnp-rpc', 'capnp', 'kj-async', 'kj']
         if self.settings.os == "Linux":
             self.cpp_info.libs.append("pthread")
